@@ -10,6 +10,8 @@
 *.lpz
 *.asv
 *_compiled.zip
+*lpz.hash
+*.smft
 SPlsWork/
 UI/
 *_archive.zip
