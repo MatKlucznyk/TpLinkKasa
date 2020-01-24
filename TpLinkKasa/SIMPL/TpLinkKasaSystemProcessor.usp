@@ -1,0 +1,31 @@
+#SYMBOL_NAME " TP Link Kasa System Processor"
+
+#INCLUDEPATH "D:\\Programming\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
+#USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
+
+Digital_Input GetSystem;
+Digital_Output IsInitialized;
+
+String_Parameter _skip_, Username[100], Password[100];
+
+push GetSystem
+{
+    integer x;
+
+    x = KasaSystem.GetSystem();
+
+    if(x = 1)
+    {
+        IsInitialized = ON;
+    }
+    else
+    {
+        IsInitialized = OFF;
+    }
+}
+
+function Main()
+{
+    KasaSystem.Username = Username;
+    KasaSystem.Password = Password;
+}

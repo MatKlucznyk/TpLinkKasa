@@ -1,0 +1,63 @@
+#SYMBOL_NAME " TP Link Kasa Dimmer"
+
+#INCLUDEPATH "D:\\Programming\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
+#USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
+
+Digital_Input GetDimmer, PowerOn, PowerOff;
+
+Analog_Input Brightness;
+
+Digital_Output _skip_, PowerIsOn;
+
+Analog_Output _skip_, BrighntessValue;
+
+String_Parameter _skip_, _skip_, _skip_, _skip_, DimmerName[100];
+
+KasaDimmer dimmer;
+
+push GetDimmer
+{
+    dimmer.GetDimmer();
+}
+
+push PowerOn
+{
+    dimmer.PowerOn();
+}
+
+push PowerOff
+{
+    dimmer.PowerOff();
+}
+
+threadsafe change Brightness
+{
+    integer x;
+
+    Seed(BrighntessValue);
+    x = Random(1, 65534);
+
+    while(x != Brightness)
+    {
+        x = Brightness;
+        dimmer.SetBrightness(x);
+    } 
+}
+
+callback function OnRelayState(integer state)
+{
+    PowerIsOn = state;
+}
+
+callback function OnBrightness(integer bri)
+{
+    BrighntessValue = bri;
+}
+
+function Main()
+{
+    dimmer.Initialize(DimmerName);
+
+    RegisterDelegate(dimmer, onNewRelayState, OnRelayState);
+    RegisterDelegate(dimmer, onNewBrightness, OnBrightness);
+}
