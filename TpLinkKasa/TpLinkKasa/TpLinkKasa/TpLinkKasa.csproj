@@ -4,7 +4,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{4444A61F-2F75-4338-8618-DC903A4FB0C6}</ProjectGuid>
+    <ProjectGuid>{5BB6D451-AF4C-4C83-A8B4-AD2FC77D6496}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>TpLinkKasa</RootNamespace>
