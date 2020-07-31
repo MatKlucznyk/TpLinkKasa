@@ -1,6 +1,6 @@
 #SYMBOL_NAME " TP Link Kasa Dimmer"
 
-#INCLUDEPATH "D:\\Programming\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
+#INCLUDEPATH "C:\\Users\\mathew.klucznyk\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
 #USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
 
 Digital_Input GetDimmer, PowerOn, PowerOff;
@@ -13,11 +13,11 @@ Analog_Output _skip_, BrighntessValue;
 
 String_Parameter _skip_, _skip_, _skip_, _skip_, DimmerName[100];
 
-KasaDimmer dimmer;
+KasaDevice dimmer;
 
 push GetDimmer
 {
-    dimmer.GetDimmer();
+    dimmer.GetDevice();
 }
 
 push PowerOn

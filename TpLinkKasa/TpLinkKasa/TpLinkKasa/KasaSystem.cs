@@ -14,7 +14,7 @@ namespace TpLinkKasa
         public static string Password { get; set; }
 
         internal static string Token;
-        internal static List<KasaDevice> Devices = new List<KasaDevice>();
+        internal static List<KasaDeviceInfo> Devices = new List<KasaDeviceInfo>();
         internal static Dictionary<string, KasaDeviceSubscriptionEvent> SubscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
 
         internal static bool RegisterDevice(string alias)
@@ -141,7 +141,7 @@ namespace TpLinkKasa
                                         {
                                             if (body["result"]["deviceList"] != null)
                                             {
-                                                Devices = JsonConvert.DeserializeObject<List<KasaDevice>>(body["result"]["deviceList"].ToString());
+                                                Devices = JsonConvert.DeserializeObject<List<KasaDeviceInfo>>(body["result"]["deviceList"].ToString());
 
                                                 foreach (var device in Devices)
                                                 {

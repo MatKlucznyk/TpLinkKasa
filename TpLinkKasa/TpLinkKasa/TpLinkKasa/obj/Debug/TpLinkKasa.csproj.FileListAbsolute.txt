@@ -6,3 +6,14 @@ D:\Programming\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\Tp
 D:\Programming\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpHelperInterface.dll
 D:\Programming\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.dll
 D:\Programming\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.pdb
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\TpLinkKasa.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\TpLinkKasa.pdb
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpCustomAttributesInterface.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpHelperInterface.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpNewtonsoft.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpReflectionInterface.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpSQLHelperInterface.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.pdb
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\Newtonsoft.Json.Compact.dll
