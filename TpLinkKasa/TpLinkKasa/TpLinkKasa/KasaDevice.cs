@@ -11,11 +11,16 @@ namespace TpLinkKasa
 {
     public class KasaDevice
     {
-        private string Alias;
+        private string alias;
         private KasaDeviceInfo device;
 
-        public ushort RelayState { get; set; }
-        public ushort Brightness { get; set; }
+        private ushort brightness;
+        private ushort relayState;
+        private ushort supportsBrightness;
+
+        public ushort RelayState { get { return relayState; } }
+        public ushort Brightness { get { return brightness; } }
+        public ushort SupportsBrightness { get { return supportsBrightness; } }
 
         public delegate void NewRelayState(ushort state);
         public delegate void Newbrightness(ushort bri);
@@ -24,15 +29,15 @@ namespace TpLinkKasa
 
         public void Initialize(string alias)
         {
-            Alias = alias;
+            this.alias = alias;
 
-            if (KasaSystem.RegisterDevice(Alias))
+            if (KasaSystem.RegisterDevice(alias))
             {
-                KasaSystem.SubscribedDevices[Alias].OnNewEvent += new EventHandler<KasaDeviceEventArgs>(KasaDimmer_OnNewEvent);
+                KasaSystem.SubscribedDevices[alias].OnNewEvent += new EventHandler<KasaDeviceEventArgs>(KasaDevice_OnNewEvent);
             }
         }
 
-        void KasaDimmer_OnNewEvent(object sender, KasaDeviceEventArgs e)
+        void KasaDevice_OnNewEvent(object sender, KasaDeviceEventArgs e)
         {
             switch (e.Id)
             {
@@ -40,10 +45,10 @@ namespace TpLinkKasa
                     GetDevice();
                     break;
                 case eKasaDeviceEventId.RelayState:
-                    RelayState = Convert.ToUInt16(e.Value);
+                    relayState = Convert.ToUInt16(e.Value);
                     break;
                 case eKasaDeviceEventId.Brightness:
-                    Brightness = Convert.ToUInt16(e.Value);
+                    brightness = Convert.ToUInt16(e.Value);
                     break;
                 default:
                     break;
@@ -54,7 +59,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if ((device = KasaSystem.Devices.Find(x => x.alias == Alias)) != null)
+                if ((device = KasaSystem.Devices.Find(x => x.alias == alias)) != null)
                 {
 
                     if (KasaSystem.Token != null)
@@ -90,8 +95,8 @@ namespace TpLinkKasa
                                             if (body["result"]["responseData"] != null)
                                             {
                                                 var data = body["result"]["responseData"].ToString().Replace("\\\"", "\"");
-                                                data = data.Remove(0, 1);
-                                                data = data.Remove(data.Length - 1, 1);
+                                                /*data = data.Remove(0, 1);
+                                                data = data.Remove(data.Length - 1, 1);*/
 
                                                 JObject switchData = JObject.Parse(data);
 
@@ -101,23 +106,28 @@ namespace TpLinkKasa
                                                     {
                                                         if (switchData["system"]["get_sysinfo"]["relay_state"] != null)
                                                         {
-                                                            RelayState = Convert.ToUInt16(switchData["system"]["get_sysinfo"]["relay_state"].ToString());
+                                                            relayState = Convert.ToUInt16(switchData["system"]["get_sysinfo"]["relay_state"].ToString());
 
                                                             if (onNewRelayState != null)
                                                             {
-                                                                onNewRelayState(RelayState);
+                                                                onNewRelayState(relayState);
                                                             }
                                                         }
 
                                                         if (switchData["system"]["get_sysinfo"]["brightness"] != null)
                                                         {
+                                                            supportsBrightness = 1;
 
-                                                            Brightness = (ushort)Math.Round(KasaSystem.ScaleUp(Convert.ToDouble(switchData["system"]["get_sysinfo"]["brightness"].ToString())));
+                                                            brightness = (ushort)Math.Round(KasaSystem.ScaleUp(Convert.ToDouble(switchData["system"]["get_sysinfo"]["brightness"].ToString())));
 
                                                             if (onNewBrightness != null)
                                                             {
-                                                                onNewBrightness(Brightness);
+                                                                onNewBrightness(brightness);
                                                             }
+                                                        }
+                                                        else
+                                                        {
+                                                            supportsBrightness = 0;
                                                         }
                                                     }
                                                 }
@@ -132,15 +142,15 @@ namespace TpLinkKasa
             }
             catch (SocketException se)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.KasaDimmer_OnNewEvent - ", se);
+                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", se);
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.KasaDimmer_OnNewEvent - ", he);
+                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.KasaDimmer_OnNewEvent - ", ex);
+                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", ex);
             }
         }
 
@@ -148,7 +158,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if ((device = KasaSystem.Devices.Find(x => x.alias == Alias)) != null)
+                if ((device = KasaSystem.Devices.Find(x => x.alias == alias)) != null)
                 {
 
                     if (KasaSystem.Token != null)
@@ -183,11 +193,11 @@ namespace TpLinkKasa
                                         {
                                             if (Convert.ToInt16(body["error_code"].ToString()) == 0)
                                             {
-                                                RelayState = 1;
+                                                relayState = 1;
 
                                                 if (onNewRelayState != null)
                                                 {
-                                                    onNewRelayState(RelayState);
+                                                    onNewRelayState(relayState);
                                                 }
                                             }
                                         }
@@ -200,15 +210,15 @@ namespace TpLinkKasa
             }
             catch (SocketException se)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOn - ", se);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOn - ", se);
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOn - ", he);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOn - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOn - ", ex);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOn - ", ex);
             }
         }
 
@@ -216,7 +226,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if ((device = KasaSystem.Devices.Find(x => x.alias == Alias)) != null)
+                if ((device = KasaSystem.Devices.Find(x => x.alias == alias)) != null)
                 {
 
                     if (KasaSystem.Token != null)
@@ -251,11 +261,11 @@ namespace TpLinkKasa
                                         {
                                             if (Convert.ToInt16(body["error_code"].ToString()) == 0)
                                             {
-                                                RelayState = 0;
+                                                relayState = 0;
 
                                                 if (onNewRelayState != null)
                                                 {
-                                                    onNewRelayState(RelayState);
+                                                    onNewRelayState(relayState);
                                                 }
                                             }
                                         }
@@ -268,15 +278,15 @@ namespace TpLinkKasa
             }
             catch (SocketException se)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOff - ", se);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOff - ", se);
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOff - ", he);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOff - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.PowerOff - ", ex);
+                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOff - ", ex);
             }
         }
 
@@ -284,48 +294,51 @@ namespace TpLinkKasa
         {
             try
             {
-                if ((device = KasaSystem.Devices.Find(x => x.alias == Alias)) != null)
+                if (supportsBrightness == 1)
                 {
-
-                    if (KasaSystem.Token != null)
+                    if ((device = KasaSystem.Devices.Find(x => x.alias == alias)) != null)
                     {
-                        if (KasaSystem.Token.Length > 0)
+
+                        if (KasaSystem.Token != null)
                         {
-                            using (HttpsClient client = new HttpsClient())
+                            if (KasaSystem.Token.Length > 0)
                             {
-                                client.TimeoutEnabled = true;
-                                client.Timeout = 10;
-                                client.HostVerification = false;
-                                client.PeerVerification = false;
-                                client.AllowAutoRedirect = false;
-
-                                HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
-
-                                request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}";
-
-                                HttpsClientResponse response = client.Dispatch(request);
-
-                                if (response.ContentString != null)
+                                using (HttpsClient client = new HttpsClient())
                                 {
-                                    if (response.ContentString.Length > 0)
+                                    client.TimeoutEnabled = true;
+                                    client.Timeout = 10;
+                                    client.HostVerification = false;
+                                    client.PeerVerification = false;
+                                    client.AllowAutoRedirect = false;
+
+                                    HttpsClientRequest request = new HttpsClientRequest();
+
+                                    request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
+                                    request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
+                                    request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
+
+                                    var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
+
+                                    request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}";
+
+                                    HttpsClientResponse response = client.Dispatch(request);
+
+                                    if (response.ContentString != null)
                                     {
-                                        JObject body = JObject.Parse(response.ContentString);
-
-                                        if (body["error_code"] != null)
+                                        if (response.ContentString.Length > 0)
                                         {
-                                            if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                            {
-                                                Brightness = bri;
+                                            JObject body = JObject.Parse(response.ContentString);
 
-                                                if (onNewBrightness != null)
+                                            if (body["error_code"] != null)
+                                            {
+                                                if (Convert.ToInt16(body["error_code"].ToString()) == 0)
                                                 {
-                                                    onNewBrightness(Brightness);
+                                                    brightness = bri;
+
+                                                    if (onNewBrightness != null)
+                                                    {
+                                                        onNewBrightness(brightness);
+                                                    }
                                                 }
                                             }
                                         }
@@ -335,18 +348,26 @@ namespace TpLinkKasa
                         }
                     }
                 }
+                else
+                {
+                    throw new InvalidOperationException("This device does not support brightness");
+                }
             }
             catch (SocketException se)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.SetBrightness - ", se);
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", se);
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.SetBrightness - ", he);
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", he);
+            }
+            catch (InvalidOperationException ie)
+            {
+                ErrorLog.Exception("InvalidoperationException occured in KasaDevice.SetBrightness - ", ie);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDimmer.SetBrightness - ", ex);
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", ex);
             }
         }
     }

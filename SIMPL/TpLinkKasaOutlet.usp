@@ -1,0 +1,41 @@
+#SYMBOL_NAME " TP Link Kasa Outlet"
+
+#INCLUDEPATH "C:\\Users\\mathew.klucznyk\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
+#USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
+
+Digital_Input GetOutlet, PowerOn, PowerOff;
+
+Digital_Output _skip_, PowerIsOn;
+
+
+String_Parameter _skip_, _skip_, _skip_, _skip_, OutletName[100];
+
+KasaDevice outlet;
+
+push GetOutlet
+{
+    outlet.GetDevice();
+}
+
+push PowerOn
+{
+    outlet.PowerOn();
+}
+
+push PowerOff
+{
+    outlet.PowerOff();
+}
+
+callback function OnRelayState(integer state)
+{
+    PowerIsOn = state;
+}
+
+function Main()
+{
+    outlet.Initialize(OutletName);
+
+    RegisterDelegate(outlet, onNewRelayState, OnRelayState);
+
+}

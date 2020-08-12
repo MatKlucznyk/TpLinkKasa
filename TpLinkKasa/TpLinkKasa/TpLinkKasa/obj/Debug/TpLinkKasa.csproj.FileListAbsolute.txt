@@ -13,7 +13,7 @@ C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp P
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpNewtonsoft.dll
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpReflectionInterface.dll
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\SimplSharpSQLHelperInterface.dll
+C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\Newtonsoft.Json.Compact.dll
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\ResolveAssemblyReference.cache
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.dll
 C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\obj\Debug\TpLinkKasa.pdb
-C:\Users\mathew.klucznyk\OneDrive - Global USS\Crestron Modules\Mat\SIMPLSharp Projects\TpLinkKasa\TpLinkKasa\TpLinkKasa\TpLinkKasa\bin\Debug\Newtonsoft.Json.Compact.dll
