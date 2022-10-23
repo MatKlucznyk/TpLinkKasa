@@ -5,6 +5,8 @@ using Crestron.SimplSharp;                          				// For Basic SIMPL# Clas
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Crestron.SimplSharp.Net.Https;
+using HttpsUtility.Https;
+using HttpsUtility.Symbols;
 
 namespace TpLinkKasa
 {
@@ -16,6 +18,9 @@ namespace TpLinkKasa
         internal static string Token;
         internal static List<KasaDeviceInfo> Devices = new List<KasaDeviceInfo>();
         internal static Dictionary<string, KasaDeviceSubscriptionEvent> SubscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
+
+        internal static readonly HttpsClientPool Client = SingletonHttpsClientPool.Instance.ClientPool;
+        //private static HttpsClient client = new HttpsClient() { TimeoutEnabled = true, Timeout = 5, HostVerification = false, PeerVerification = false, AllowAutoRedirect = false, IncludeHeaders = false };
 
         internal static bool RegisterDevice(string alias)
         {
@@ -46,30 +51,23 @@ namespace TpLinkKasa
             {
                 if (Username.Length > 0 && Password.Length > 0)
                 {
-                    using (HttpsClient client = new HttpsClient())
+                    /*HttpsClientRequest request = new HttpsClientRequest();
+
+                    request.Url.Parse("https://wap.tplinkcloud.com");
+                    request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
+                    request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
+
+                    request.ContentString = "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}";*/
+
+                    var response = Client.Post("https://wap.tplinkcloud.com", SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}");
+
+                    if (response != null)
                     {
-                        client.TimeoutEnabled = true;
-                        client.Timeout = 10;
-                        client.HostVerification = false;
-                        client.PeerVerification = false;
-                        client.AllowAutoRedirect = false;
-                        client.IncludeHeaders = false;
-
-                        HttpsClientRequest request = new HttpsClientRequest();
-
-                        request.Url.Parse("https://wap.tplinkcloud.com");
-                        request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                        request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                        request.ContentString = "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}";
-
-                        HttpsClientResponse response = client.Dispatch(request);
-
-                        if (response.ContentString != null)
+                        if (response.Status == 200)
                         {
-                            if (response.ContentString.Length > 0)
+                            if (response.Content.Length > 0)
                             {
-                                JObject body = JObject.Parse(response.ContentString);
+                                var body = JObject.Parse(response.Content);
 
                                 if (body["result"] != null)
                                 {
@@ -114,30 +112,25 @@ namespace TpLinkKasa
                     {
                         if (Token.Length > 0)
                         {
-                            using (HttpsClient client = new HttpsClient())
+                            /*HttpsClientRequest request = new HttpsClientRequest();
+
+                            request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", Token));
+                            request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
+                            request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
+
+                            request.ContentString = "{\"method\":\"getDeviceList\"}";
+
+                            HttpsClientResponse response = client.Dispatch(request);*/
+
+                            var response = Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"getDeviceList\"}");
+
+                            if (response != null)
                             {
-                                client.TimeoutEnabled = true;
-                                client.Timeout = 10;
-                                client.HostVerification = false;
-                                client.PeerVerification = false;
-                                client.AllowAutoRedirect = false;
-                                client.IncludeHeaders = false;
-
-                                HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                request.ContentString = "{\"method\":\"getDeviceList\"}";
-
-                                HttpsClientResponse response = client.Dispatch(request);
-
-                                if (response.ContentString != null)
+                                if (response.Status == 200)
                                 {
-                                    if (response.ContentString.Length > 0)
+                                    if (response.Content.Length > 0)
                                     {
-                                        JObject body = JObject.Parse(response.ContentString);
+                                        var body = JObject.Parse(response.Content);
 
                                         if (body["result"] != null)
                                         {
@@ -147,9 +140,9 @@ namespace TpLinkKasa
 
                                                 foreach (var device in Devices)
                                                 {
-                                                    if (SubscribedDevices.ContainsKey(device.alias))
+                                                    if (SubscribedDevices.ContainsKey(device.Alias))
                                                     {
-                                                        SubscribedDevices[device.alias].Fire(new KasaDeviceEventArgs(eKasaDeviceEventId.GetNow, 1));
+                                                        SubscribedDevices[device.Alias].Fire(new KasaDeviceEventArgs(eKasaDeviceEventId.GetNow, 1));
                                                     }
                                                 }
                                             }

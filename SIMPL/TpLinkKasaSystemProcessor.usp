@@ -1,6 +1,5 @@
 #SYMBOL_NAME " TP Link Kasa System Processor"
 
-#INCLUDEPATH "C:\\Users\\mathew.klucznyk\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug"
 #USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
 
 Digital_Input GetSystem;

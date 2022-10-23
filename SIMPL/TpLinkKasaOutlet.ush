@@ -6,12 +6,11 @@
   Sgntr=UserSPlus
   RelVrs=1
   IntStrVrs=1
-  SPlusVrs=4.05.01
+  SPlusVrs=4.06.00
   CrossCplrVrs=1.3
 [END]
 [BEGIN]
   ObjTp=Hd
-  IncludePath1=C:\\Users\\mathew.klucznyk\\OneDrive - Global USS\\Crestron Modules\\Mat\\SIMPLSharp Projects\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\TpLinkKasa\\bin\\Debug
 [END]
 [BEGIN]
   ObjTp=Symbol

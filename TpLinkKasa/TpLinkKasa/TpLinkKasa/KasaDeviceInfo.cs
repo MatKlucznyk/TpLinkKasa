@@ -3,13 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Crestron.SimplSharp;
+using Newtonsoft.Json;
 
 namespace TpLinkKasa
 {
     public class KasaDeviceInfo
     {
-        public string deviceId { get; set; }
-        public string alias { get; set; }
-        public string deviceModel { get; set; }
+        [JsonProperty("deviceId")]
+        public string DeviceId { get; set; }
+        
+        [JsonProperty("alias")]
+        public string Alias { get; set; }
+
+        [JsonProperty("deviceModel")]
+        public string DeviceModel { get; set; }
     }
 }

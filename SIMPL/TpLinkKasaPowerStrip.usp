@@ -1,0 +1,53 @@
+#SYMBOL_NAME " TP Link Kasa Power Strip"
+
+#USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
+
+Digital_Input GetPowerStrip, PowerOnOutlet[3], PowerOffOutlet[3,3];
+
+Digital_Output _skip_, PowerIsOnOutlet[3,3];
+
+
+String_Parameter _skip_, _skip_, _skip_, _skip_, _skip_, _skip_, _skip_, PowerStripName[100];
+
+KasaDevice strip;
+
+push GetPowerStrip
+{
+    strip.GetDevice();
+}
+
+push PowerOnOutlet
+{
+   integer x;
+
+   x = GetLastModifiedArrayIndex();
+
+    strip.PowerOnChild(x);
+}
+
+push PowerOffOutlet
+{
+   integer x;
+
+   x = GetLastModifiedArrayIndex();
+
+    strip.PowerOffChild(x);
+}
+
+callback function OnNewChildrenData(KasaDeviceChildren children)
+{
+    integer cnt;
+
+    for(cnt = 1 to children.Count)
+    {
+      PowerIsOnOutlet[cnt] = children.Children[cnt -1].State;
+    }
+}
+
+function Main()
+{
+    strip.Initialize(PowerStripName);
+
+    RegisterDelegate(strip, onNewChildrenData, OnNewChildrenData);
+
+}
