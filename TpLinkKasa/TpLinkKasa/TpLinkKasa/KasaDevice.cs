@@ -18,16 +18,16 @@ namespace TpLinkKasa
 
         private ushort _brightness;
         private ushort _relayState;
-        private ushort _supportsBrightness;
-        private ushort _supportsRelayState;
+        private bool _supportsBrightness;
+        private bool _supportsRelayState;
         private ushort _hasChildren;
         private ushort _totalChildern;
         private List<KasaDeviceChild> _children;
 
         public ushort RelayState { get { return _relayState; } }
         public ushort Brightness { get { return _brightness; } }
-        public ushort SupportsBrightness { get { return _supportsBrightness; } }
-        public ushort SupportsRelayState { get { return _supportsRelayState;}}
+        public ushort SupportsBrightness { get { return Convert.ToUInt16(_supportsBrightness); } }
+        public ushort SupportsRelayState { get { return Convert.ToUInt16(_supportsRelayState);}}
         public ushort HasChildren { get { return _hasChildren; } }
         public ushort TotalChildren { get { return _totalChildern; } }
 
@@ -41,8 +41,6 @@ namespace TpLinkKasa
         public void Initialize(string alias)
         {
             _alias = alias;
-
-            //client = new HttpsClient() { TimeoutEnabled = true, Timeout = 5, HostVerification = false, PeerVerification = false, AllowAutoRedirect = false, IncludeHeaders = false };
 
             if (KasaSystem.RegisterDevice(alias))
             {
@@ -116,7 +114,7 @@ namespace TpLinkKasa
                                                     {
                                                         if (switchData["system"]["get_sysinfo"]["relay_state"] != null)
                                                         {
-                                                            _supportsRelayState = 1;
+                                                            _supportsRelayState = true;
                                                             _relayState = switchData["system"]["get_sysinfo"]["relay_state"].ToObject<ushort>();
 
                                                             if (onNewRelayState != null)
@@ -127,7 +125,7 @@ namespace TpLinkKasa
 
                                                         if (switchData["system"]["get_sysinfo"]["brightness"] != null)
                                                         {
-                                                            _supportsBrightness = 1;
+                                                            _supportsBrightness = true;
 
                                                             _brightness = (ushort)Math.Round(KasaSystem.ScaleUp(switchData["system"]["get_sysinfo"]["brightness"].ToObject<Double>()));
 
@@ -138,7 +136,7 @@ namespace TpLinkKasa
                                                         }
                                                         else
                                                         {
-                                                            _supportsBrightness = 0;
+                                                            _supportsBrightness = false;
                                                         }
 
                                                         if (switchData["system"]["get_sysinfo"]["child_num"] != null)
@@ -190,7 +188,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsRelayState == 1)
+                if (_supportsRelayState)
                 {
                     if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
                     {
@@ -257,7 +255,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsRelayState == 1)
+                if (_supportsRelayState)
                 {
                     if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
                     {
@@ -470,7 +468,7 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsBrightness == 1)
+                if (_supportsBrightness)
                 {
                     if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
                     {
