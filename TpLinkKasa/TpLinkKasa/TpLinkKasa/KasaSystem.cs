@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
 using Crestron.SimplSharp;                          				// For Basic SIMPL# Classes
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Crestron.SimplSharp.Net.Https;
 using HttpsUtility.Https;
 using HttpsUtility.Symbols;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace TpLinkKasa
 {

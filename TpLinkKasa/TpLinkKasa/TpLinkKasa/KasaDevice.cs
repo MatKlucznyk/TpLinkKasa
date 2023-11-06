@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Crestron.SimplSharp;
 using Crestron.SimplSharp.Net.Https;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using HttpsUtility.Symbols;
+using Newtonsoft.Json.Linq;
 
 namespace TpLinkKasa
 {
@@ -477,19 +474,6 @@ namespace TpLinkKasa
                         {
                             if (KasaSystem.Token.Length > 0)
                             {
-                                /*
-                                HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
-
-                                request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}";
-
-                                HttpsClientResponse response = client.Dispatch(request);
-                                 */
                                 var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
                                 var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}");
 
