@@ -34,7 +34,7 @@ push PowerOffOutlet
     strip.PowerOffChild(x);
 }
 
-callback function OnNewChildrenData(KasaDeviceChildren children)
+callback function NewChildrenData(KasaDeviceChildren children)
 {
     integer cnt;
 
@@ -48,6 +48,6 @@ function Main()
 {
     strip.Initialize(PowerStripName);
 
-    RegisterDelegate(strip, onNewChildrenData, OnNewChildrenData);
+    RegisterDelegate(strip, OnNewChildrenData, NewChildrenData);
 
 }

@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Crestron.SimplSharp;
 using Crestron.SimplSharp.Net.Https;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using HttpsUtility.Symbols;
+using Newtonsoft.Json.Linq;
 
 namespace TpLinkKasa
 {
@@ -14,35 +11,39 @@ namespace TpLinkKasa
     {
         private string _alias;
         private KasaDeviceInfo _device;
-        //private HttpsClient client;
 
-        private ushort _brightness;
-        private ushort _relayState;
-        private ushort _supportsBrightness;
-        private ushort _supportsRelayState;
-        private ushort _hasChildren;
-        private ushort _totalChildern;
+        private bool _supportsBrightness;
+        private bool _supportsRelayState;
+        private bool _supportsHue;
+        private bool _supportsSaturation;
+        private bool _hasChildren;
         private List<KasaDeviceChild> _children;
 
-        public ushort RelayState { get { return _relayState; } }
-        public ushort Brightness { get { return _brightness; } }
-        public ushort SupportsBrightness { get { return _supportsBrightness; } }
-        public ushort SupportsRelayState { get { return _supportsRelayState;}}
-        public ushort HasChildren { get { return _hasChildren; } }
-        public ushort TotalChildren { get { return _totalChildern; } }
+        public ushort RelayState { get; private set; }
+        public ushort Brightness { get; private set; }
+        public ushort Hue { get; private set; }
+        public ushort Saturation { get; private set; }
+        public ushort SupportsBrightness { get { return Convert.ToUInt16(_supportsBrightness); } }
+        public ushort SupportsRelayState { get { return Convert.ToUInt16(_supportsRelayState);}}
+        public ushort SupportsHue { get { return Convert.ToUInt16(_supportsHue); }}
+        public ushort SupportsSaturation { get { return Convert.ToUInt16(_supportsSaturation); }}
+        public ushort HasChildren { get { return Convert.ToUInt16(_hasChildren); }}
+        public ushort TotalChildren { get; private set; }
 
         public delegate void NewRelayState(ushort state);
         public delegate void Newbrightness(ushort bri);
+        public delegate void NewHue(ushort hue);
+        public delegate void NewSaturation(ushort sat);
         public delegate void NewChildrenData(KasaDeviceChildren children);
-        public NewRelayState onNewRelayState { get; set; }
-        public Newbrightness onNewBrightness { get; set; }
-        public NewChildrenData onNewChildrenData { get; set; }
+        public NewRelayState OnNewRelayState { get; set; }
+        public Newbrightness OnNewBrightness { get; set; }
+        public NewHue OnNewHue { get; set; }
+        public NewSaturation OnNewSaturation { get; set; }
+        public NewChildrenData OnNewChildrenData { get; set; }
 
         public void Initialize(string alias)
         {
             _alias = alias;
-
-            //client = new HttpsClient() { TimeoutEnabled = true, Timeout = 5, HostVerification = false, PeerVerification = false, AllowAutoRedirect = false, IncludeHeaders = false };
 
             if (KasaSystem.RegisterDevice(alias))
             {
@@ -58,10 +59,10 @@ namespace TpLinkKasa
                     GetDevice();
                     break;
                 case eKasaDeviceEventId.RelayState:
-                    _relayState = Convert.ToUInt16(e.Value);
+                    RelayState = Convert.ToUInt16(e.Value);
                     break;
                 case eKasaDeviceEventId.Brightness:
-                    _brightness = Convert.ToUInt16(e.Value);
+                    Brightness = Convert.ToUInt16(e.Value);
                     break;
                 default:
                     break;
@@ -72,103 +73,107 @@ namespace TpLinkKasa
         {
             try
             {
-                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
+                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                if (KasaSystem.Token == null) return;
+                if (KasaSystem.Token.Length <= 0) return;
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"get_sysinfo\\\":{}}}\"}}");
+
+                if (response == null) return;
+                if (response.Status != 200) return;
+                if (response.Content.Length <= 0) return;
+
+                var body = JObject.Parse(response.Content);
+
+                if (body["result"] == null) return;
+                if (body["result"]["responseData"] == null) return;
+
+                var data = body["result"]["responseData"].ToString().Replace("\\\"", "\"");
+                var switchData = JObject.Parse(data);
+
+                if (switchData["system"] == null) return;
+                if (switchData["system"]["get_sysinfo"] == null) return;
+
+                if (switchData["system"]["get_sysinfo"]["relay_state"] != null)
+                {
+                    _supportsRelayState = true;
+                    RelayState = switchData["system"]["get_sysinfo"]["relay_state"].ToObject<ushort>();
+
+                    if (OnNewRelayState != null)
+                    {
+                        OnNewRelayState(RelayState);
+                    }
+                }
+
+                if (switchData["system"]["get_sysinfo"]["brightness"] != null)
+                {
+                    _supportsBrightness = true;
+
+                    var bri = switchData["system"]["get_sysinfo"]["brightness"].ToObject<int>();
+
+                    Brightness =
+                        (ushort) CrestronEnvironment.ScaleWithLimits(bri, 100, 0, ushort.MaxValue, ushort.MinValue);
+
+                    if (OnNewBrightness != null)
+                    {
+                        OnNewBrightness(Brightness);
+                    }
+                }
+                else
+                {
+                    _supportsBrightness = false;
+                }
+
+                if (switchData["system"]["get_sysinfo"]["light_state"] != null)
+                {
+                    _supportsBrightness = true;
+                    _supportsHue = true;
+                    _supportsSaturation = true;
+
+                    var bri = switchData["system"]["get_sysinfo"]["light_state"]["brightness"].ToObject<int>();
+                    var hue = switchData["system"]["get_sysinfo"]["light_state"]["hue"].ToObject<int>();
+                    var sat = switchData["system"]["get_sysinfo"]["light_state"]["saturation"].ToObject<int>();
+
+                    Brightness =
+                        (ushort)CrestronEnvironment.ScaleWithLimits(bri, 100, 0, ushort.MaxValue, ushort.MinValue);
+                    Hue = (ushort) CrestronEnvironment.ScaleWithLimits(hue, 360, 0, ushort.MaxValue, ushort.MinValue);
+                    Saturation =
+                        (ushort) CrestronEnvironment.ScaleWithLimits(sat, 100, 0, ushort.MaxValue, ushort.MinValue);
+
+                    if (OnNewBrightness != null)
+                    {
+                        OnNewBrightness(Brightness);
+                    }
+
+                    if (OnNewHue != null)
+                    {
+                        OnNewHue(Hue);
+                    }
+
+                    if (OnNewSaturation != null)
+                    {
+                        OnNewSaturation(Saturation);
+                    }
+                }
+
+                if (switchData["system"]["get_sysinfo"]["child_num"] != null)
                 {
 
-                    if (KasaSystem.Token != null)
+                    TotalChildren = switchData["system"]["get_sysinfo"]["child_num"].ToObject<ushort>();
+
+                    if (TotalChildren > 0)
                     {
-                        if (KasaSystem.Token.Length > 0)
-                        {
-                            /*HttpsClientRequest request = new HttpsClientRequest();
+                        _hasChildren = true;
+                    }
+                }
 
+                if (switchData["system"]["get_sysinfo"]["children"] != null)
+                {
+                    _children = switchData["system"]["get_sysinfo"]["children"].ToObject<List<KasaDeviceChild>>();
 
-                            request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                            request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                            request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                            request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"get_sysinfo\\\":{}}}\"}}";
-
-                            HttpsClientResponse response = client.Dispatch(request);*/
-
-                            var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"get_sysinfo\\\":{}}}\"}}");
-
-                            if (response != null)
-                            {
-                                if (response.Status == 200)
-                                {
-                                    if (response.Content.Length > 0)
-                                    {
-                                        var body = JObject.Parse(response.Content);
-
-                                        if (body["result"] != null)
-                                        {
-                                            if (body["result"]["responseData"] != null)
-                                            {
-                                                var data = body["result"]["responseData"].ToString().Replace("\\\"", "\"");
-                                                /*data = data.Remove(0, 1);
-                                                data = data.Remove(data.Length - 1, 1);*/
-
-                                                var switchData = JObject.Parse(data);
-
-                                                if (switchData["system"] != null)
-                                                {
-                                                    if (switchData["system"]["get_sysinfo"] != null)
-                                                    {
-                                                        if (switchData["system"]["get_sysinfo"]["relay_state"] != null)
-                                                        {
-                                                            _supportsRelayState = 1;
-                                                            _relayState = switchData["system"]["get_sysinfo"]["relay_state"].ToObject<ushort>();
-
-                                                            if (onNewRelayState != null)
-                                                            {
-                                                                onNewRelayState(_relayState);
-                                                            }
-                                                        }
-
-                                                        if (switchData["system"]["get_sysinfo"]["brightness"] != null)
-                                                        {
-                                                            _supportsBrightness = 1;
-
-                                                            _brightness = (ushort)Math.Round(KasaSystem.ScaleUp(switchData["system"]["get_sysinfo"]["brightness"].ToObject<Double>()));
-
-                                                            if (onNewBrightness != null)
-                                                            {
-                                                                onNewBrightness(_brightness);
-                                                            }
-                                                        }
-                                                        else
-                                                        {
-                                                            _supportsBrightness = 0;
-                                                        }
-
-                                                        if (switchData["system"]["get_sysinfo"]["child_num"] != null)
-                                                        {
-
-                                                            _totalChildern = switchData["system"]["get_sysinfo"]["child_num"].ToObject<ushort>();
-
-                                                            if (_totalChildern > 0)
-                                                            {
-                                                                _hasChildren = 1;
-                                                            }
-                                                        }
-
-                                                        if (switchData["system"]["get_sysinfo"]["children"] != null)
-                                                        {
-                                                            _children = switchData["system"]["get_sysinfo"]["children"].ToObject<List<KasaDeviceChild>>();
-
-                                                            if (onNewChildrenData != null)
-                                                            {
-                                                                onNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    if (OnNewChildrenData != null)
+                    {
+                        OnNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
                     }
                 }
             }
@@ -190,53 +195,27 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsRelayState == 1)
+                if (!_supportsRelayState) return;
+                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                if (KasaSystem.Token == null) return;
+                if (KasaSystem.Token.Length <= 0) return;
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}");
+
+                if (response == null) return;
+                if (response.Status != 200) return;
+                if (response.Content.Length <= 0) return;
+
+                var body = JObject.Parse(response.Content);
+
+                if (body["error_code"] == null) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                RelayState = 1;
+
+                if (OnNewRelayState != null)
                 {
-                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
-                    {
-
-                        if (KasaSystem.Token != null)
-                        {
-                            if (KasaSystem.Token.Length > 0)
-                            {
-                                /*HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
-
-                                HttpsClientResponse response = client.Dispatch(request);*/
-
-                                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}");
-
-                                if (response != null)
-                                {
-                                    if (response.Status == 200)
-                                    {
-                                        if (response.Content.Length > 0)
-                                        {
-                                            var body = JObject.Parse(response.Content);
-
-                                            if (body["error_code"] != null)
-                                            {
-                                                if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                                {
-                                                    _relayState = 1;
-
-                                                    if (onNewRelayState != null)
-                                                    {
-                                                        onNewRelayState(_relayState);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    OnNewRelayState(RelayState);
                 }
             }
             catch (SocketException se)
@@ -257,53 +236,27 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsRelayState == 1)
+                if (!_supportsRelayState) return;
+                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                if (KasaSystem.Token == null) return;
+                if (KasaSystem.Token.Length <= 0) return;
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}");
+
+                if (response == null) return;
+                if (response.Status != 200) return;
+                if (response.Content.Length <= 0) return;
+
+                var body = JObject.Parse(response.Content);
+
+                if (body["error_code"] == null) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                RelayState = 0;
+
+                if (OnNewRelayState != null)
                 {
-                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
-                    {
-
-                        if (KasaSystem.Token != null)
-                        {
-                            if (KasaSystem.Token.Length > 0)
-                            {
-                                /*HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}";
-
-                                HttpsClientResponse response = client.Dispatch(request);*/
-
-                                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}");
-
-                                if (response != null)
-                                {
-                                    if (response.Status == 200)
-                                    {
-                                        if (response.Content.Length > 0)
-                                        {
-                                            JObject body = JObject.Parse(response.Content);
-
-                                            if (body["error_code"] != null)
-                                            {
-                                                if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                                {
-                                                    _relayState = 0;
-
-                                                    if (onNewRelayState != null)
-                                                    {
-                                                        onNewRelayState(_relayState);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    OnNewRelayState(RelayState);
                 }
             }
             catch (SocketException se)
@@ -324,59 +277,29 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_hasChildren == 1)
+                if (!_hasChildren) return;
+                if (TotalChildren < index) return;
+                if (_children[index - 1] == null) return;
+                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                if (KasaSystem.Token == null) return;
+                if (KasaSystem.Token.Length <= 0) return;
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + _children[index - 1].ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}");
+
+                if (response == null) return;
+                if (response.Status != 200) return;
+                if (response.Content.Length <= 0) return;
+
+                var body = JObject.Parse(response.Content);
+
+                if (body["error_code"] == null) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                _children[index - 1].State = 1;
+
+                if (OnNewChildrenData != null)
                 {
-                    if (_totalChildern >= index)
-                    {
-                        if (_children[index - 1] != null)
-                        {
-                            if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
-                            {
-
-                                if (KasaSystem.Token != null)
-                                {
-                                    if (KasaSystem.Token.Length > 0)
-                                    {
-                                        /*HttpsClientRequest request = new HttpsClientRequest();
-
-                                        request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                        request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                        request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                        request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
-
-                                        HttpsClientResponse response = client.Dispatch(request);*/
-
-                                        var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + _children[index - 1].ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}");
-
-                                        if (response != null)
-                                        {
-                                            if (response.Status == 200)
-                                            {
-                                                if (response.Content.Length > 0)
-                                                {
-                                                    var body = JObject.Parse(response.Content);
-
-                                                    if (body["error_code"] != null)
-                                                    {
-                                                        if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                                        {
-                                                            _children[index - 1].State = 1;
-
-                                                            if (onNewChildrenData != null)
-                                                            {
-                                                                onNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    OnNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
                 }
             }
             catch (SocketException se)
@@ -397,59 +320,29 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_hasChildren == 1)
+                if (!_hasChildren) return;
+                if (TotalChildren < index) return;
+                if (_children[index - 1] == null) return;
+                if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                if (KasaSystem.Token == null) return;
+                if (KasaSystem.Token.Length <= 0) return;
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + _children[index - 1].ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}");
+
+                if (response == null) return;
+                if (response.Status != 200) return;
+                if (response.Content.Length <= 0) return;
+
+                var body = JObject.Parse(response.Content);
+
+                if (body["error_code"] == null) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                _children[index - 1].State = 0;
+
+                if (OnNewChildrenData != null)
                 {
-                    if (_totalChildern >= index)
-                    {
-                        if (_children[index - 1] != null)
-                        {
-                            if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
-                            {
-
-                                if (KasaSystem.Token != null)
-                                {
-                                    if (KasaSystem.Token.Length > 0)
-                                    {
-                                        /*HttpsClientRequest request = new HttpsClientRequest();
-
-                                        request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                        request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                        request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                        request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
-
-                                        HttpsClientResponse response = client.Dispatch(request);*/
-
-                                        var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + _children[index - 1].ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}");
-
-                                        if (response != null)
-                                        {
-                                            if (response.Status == 200)
-                                            {
-                                                if (response.Content.Length > 0)
-                                                {
-                                                    var body = JObject.Parse(response.Content);
-
-                                                    if (body["error_code"] != null)
-                                                    {
-                                                        if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                                        {
-                                                            _children[index - 1].State = 0;
-
-                                                            if (onNewChildrenData != null)
-                                                            {
-                                                                onNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    OnNewChildrenData(new KasaDeviceChildren(_children.ToArray()));
                 }
             }
             catch (SocketException se)
@@ -470,56 +363,41 @@ namespace TpLinkKasa
         {
             try
             {
-                if (_supportsBrightness == 1)
+                if (_supportsBrightness)
                 {
-                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) != null)
+                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                    if (KasaSystem.Token == null) return;
+                    if (KasaSystem.Token.Length <= 0) return;
+
+                    var sBri = CrestronEnvironment.ScaleWithLimits(bri, ushort.MaxValue, ushort.MinValue, 100, 0);
+                    string briBody;
+
+                    if (!_supportsHue && !_supportsSaturation)
+                        briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" +
+                                  sBri.ToString() + "}}}\"}}";
+                    else
+                        briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"brightness\\\":" +
+                                  sBri.ToString() + "}}}\"}}";
+
+                    
+                    var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), briBody);
+
+                    if (response.Content == null) return;
+                    if (response.Status != 200) return;
+                    if (response.Content.Length <= 0) return;
+
+                    var body = JObject.Parse(response.Content);
+
+                    if (body["error_code"] == null) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                    Brightness = bri;
+
+                    if (OnNewBrightness != null)
                     {
-
-                        if (KasaSystem.Token != null)
-                        {
-                            if (KasaSystem.Token.Length > 0)
-                            {
-                                /*
-                                HttpsClientRequest request = new HttpsClientRequest();
-
-                                request.Url.Parse(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token));
-                                request.RequestType = Crestron.SimplSharp.Net.Https.RequestType.Post;
-                                request.Header.AddHeader(new HttpsHeader("Content-Type", "application/json"));
-
-                                var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
-
-                                request.ContentString = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.deviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}";
-
-                                HttpsClientResponse response = client.Dispatch(request);
-                                 */
-                                var sBri = (ushort)Math.Round(KasaSystem.ScaleDown(Convert.ToDouble(bri)));
-                                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" + sBri.ToString() + "}}},\"}}");
-
-                                if (response.Content != null)
-                                {
-                                    if (response.Status == 200)
-                                    {
-                                        if (response.Content.Length > 0)
-                                        {
-                                            var body = JObject.Parse(response.Content);
-
-                                            if (body["error_code"] != null)
-                                            {
-                                                if (Convert.ToInt16(body["error_code"].ToString()) == 0)
-                                                {
-                                                    _brightness = bri;
-
-                                                    if (onNewBrightness != null)
-                                                    {
-                                                        onNewBrightness(_brightness);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        OnNewBrightness(Brightness);
                     }
                 }
                 else
@@ -542,6 +420,122 @@ namespace TpLinkKasa
             catch (Exception ex)
             {
                 ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", ex);
+            }
+        }
+
+        public void SetHue(ushort hue)
+        {
+            try
+            {
+                if (_supportsHue)
+                {
+                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                    if (KasaSystem.Token == null) return;
+                    if (KasaSystem.Token.Length <= 0) return;
+
+                    var sHue = CrestronEnvironment.ScaleWithLimits(hue, ushort.MaxValue, ushort.MinValue, 360, 0);
+
+                    var hueBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"hue\\\":" +
+                                  sHue.ToString() + "}}}\"}}";
+
+                    var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), hueBody);
+
+                    if (response.Content == null) return;
+                    if (response.Status != 200) return;
+                    if (response.Content.Length <= 0) return;
+
+                    var body = JObject.Parse(response.Content);
+
+                    if (body["error_code"] == null) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                    Hue = hue;
+
+                    if (OnNewHue != null)
+                    {
+                        OnNewHue(Hue);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("This device does not support hue");
+                }
+            }
+            catch (SocketException se)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetHue - ", se);
+            }
+            catch (HttpsException he)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetHue - ", he);
+            }
+            catch (InvalidOperationException ie)
+            {
+                ErrorLog.Exception("InvalidoperationException occured in KasaDevice.SetHue - ", ie);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetHue - ", ex);
+            }
+        }
+
+        public void SetSaturation(ushort sat)
+        {
+            try
+            {
+                if (_supportsSaturation)
+                {
+                    if ((_device = KasaSystem.Devices.Find(x => x.Alias == _alias)) == null) return;
+                    if (KasaSystem.Token == null) return;
+                    if (KasaSystem.Token.Length <= 0) return;
+
+                    var sSat = CrestronEnvironment.ScaleWithLimits(sat, ushort.MaxValue, ushort.MinValue, 100, 0);
+
+                    var satBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"saturation\\\":" +
+                                  sSat.ToString() + "}}}\"}}";
+
+
+
+                    var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), satBody);
+
+                    if (response.Content == null) return;
+                    if (response.Status != 200) return;
+                    if (response.Content.Length <= 0) return;
+
+                    var body = JObject.Parse(response.Content);
+
+                    if (body["error_code"] == null) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+
+                    Saturation = sat;
+
+                    if (OnNewSaturation != null)
+                    {
+                        OnNewSaturation(Saturation);
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("This device does not support saturation");
+                }
+            }
+            catch (SocketException se)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetSaturation - ", se);
+            }
+            catch (HttpsException he)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetSaturation - ", he);
+            }
+            catch (InvalidOperationException ie)
+            {
+                ErrorLog.Exception("InvalidoperationException occured in KasaDevice.SetSaturation - ", ie);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Exception("SocketException occured in KasaDevice.SetSaturation - ", ex);
             }
         }
     }

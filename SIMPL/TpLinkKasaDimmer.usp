@@ -57,6 +57,6 @@ function Main()
 {
     dimmer.Initialize(DimmerName);
 
-    RegisterDelegate(dimmer, onNewRelayState, OnRelayState);
-    RegisterDelegate(dimmer, onNewBrightness, OnBrightness);
+    RegisterDelegate(dimmer, OnNewRelayState, OnRelayState);
+    RegisterDelegate(dimmer, OnNewBrightness, OnBrightness);
 }
