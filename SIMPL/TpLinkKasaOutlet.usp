@@ -35,6 +35,6 @@ function Main()
 {
     outlet.Initialize(OutletName);
 
-    RegisterDelegate(outlet, onNewRelayState, OnRelayState);
+    RegisterDelegate(outlet, OnNewRelayState, OnRelayState);
 
 }

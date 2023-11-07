@@ -131,23 +131,5 @@ namespace TpLinkKasa
                 return 0;
             }
         }
-
-        internal static double ScaleUp(double level)
-        {
-            var scaleLevel = level;
-            var levelScaled = (scaleLevel * (65535.0 / 100.0));
-            if (levelScaled == 1)
-                levelScaled = 0;
-            return levelScaled;
-        }
-
-        internal static double ScaleDown(double level)
-        {
-            var scaleLevel = level;
-            var levelScaled = (scaleLevel / (65535.0 / 100.0));
-            if (levelScaled == 0)
-                levelScaled = 1;
-            return levelScaled;
-        }
     }
 }

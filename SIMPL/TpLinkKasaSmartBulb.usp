@@ -1,0 +1,102 @@
+#SYMBOL_NAME " TP Link Kasa Smart Bulb"
+
+#USER_SIMPLSHARP_LIBRARY "TpLinkKasa"
+
+Digital_Input GetBulb, PowerOn, PowerOff;
+
+Analog_Input Brightness, Hue, Saturation;
+
+Digital_Output _skip_, PowerIsOn;
+
+Analog_Output _skip_, BrighntessValue, HueValue, SaturationValue;
+
+String_Parameter _skip_, _skip_, _skip_, _skip_, _skip_, _skip_, BulbName[100];
+
+KasaDevice bulb;
+
+push Getbulb
+{
+	bulb.GetDevice();
+}
+
+push PowerOn
+{
+	bulb.PowerOn();
+}
+
+push PowerOff
+{
+	bulb.PowerOff();
+}
+
+threadsafe change Brightness
+{
+	integer x;
+	
+	Seed(BrighntessValue);
+	x = Random(1, 65534);
+	
+	while(x != Brightness)
+	{
+		x = Brightness;
+		bulb.SetBrightness(x);
+	} 
+}
+
+threadsafe change Hue
+{
+	integer x;
+	
+	Seed(HueValue);
+	x = Random(1, 65534);
+	
+	while(x != Hue)
+	{
+		x = Hue;
+		bulb.SetHue(x);
+	} 
+}
+
+threadsafe change Saturation
+{
+	integer x;
+	
+	Seed(SaturationValue);
+	x = Random(1, 65534);
+	
+	while(x != Saturation)
+	{
+		x = Saturation;
+		bulb.SetSaturation(x);
+	} 
+}
+
+callback function OnRelayState(integer state)
+{
+	PowerIsOn = state;
+}
+
+callback function OnBrightness(integer bri)
+{
+	BrighntessValue = bri;
+}
+
+callback function OnHue(integer h)
+{
+	HueValue = h;
+}
+
+callback function OnSaturation(integer sat)
+{
+	SaturationValue = sat;
+}
+
+function Main()
+{
+	bulb.Initialize(bulbName);
+	
+	RegisterDelegate(bulb, OnNewRelayState, OnRelayState);
+	RegisterDelegate(bulb, OnNewBrightness, OnBrightness);
+	RegisterDelegate(bulb, OnNewHue, OnHue);
+	RegisterDelegate(bulb, OnNewSaturation, OnSaturation);
+}
