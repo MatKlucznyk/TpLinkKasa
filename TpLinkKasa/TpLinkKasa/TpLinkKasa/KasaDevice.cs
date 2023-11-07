@@ -104,6 +104,10 @@ namespace TpLinkKasa
                         OnNewRelayState(RelayState);
                     }
                 }
+                else
+                {
+                    _supportsRelayState = false;
+                }
 
                 if (switchData["system"]["get_sysinfo"]["brightness"] != null)
                 {
@@ -126,10 +130,12 @@ namespace TpLinkKasa
 
                 if (switchData["system"]["get_sysinfo"]["light_state"] != null)
                 {
+                    _supportsRelayState = true;
                     _supportsBrightness = true;
                     _supportsHue = true;
                     _supportsSaturation = true;
 
+                    RelayState = switchData["system"]["get_sysinfo"]["light_state"]["on_off"].ToObject<ushort>();
                     var bri = switchData["system"]["get_sysinfo"]["light_state"]["brightness"].ToObject<int>();
                     var hue = switchData["system"]["get_sysinfo"]["light_state"]["hue"].ToObject<int>();
                     var sat = switchData["system"]["get_sysinfo"]["light_state"]["saturation"].ToObject<int>();
@@ -139,6 +145,11 @@ namespace TpLinkKasa
                     Hue = (ushort) CrestronEnvironment.ScaleWithLimits(hue, 360, 0, ushort.MaxValue, ushort.MinValue);
                     Saturation =
                         (ushort) CrestronEnvironment.ScaleWithLimits(sat, 100, 0, ushort.MaxValue, ushort.MinValue);
+
+                    if (OnNewRelayState != null)
+                    {
+                        OnNewRelayState(RelayState);
+                    }
 
                     if (OnNewBrightness != null)
                     {
@@ -200,7 +211,16 @@ namespace TpLinkKasa
                 if (KasaSystem.Token == null) return;
                 if (KasaSystem.Token.Length <= 0) return;
 
-                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}");
+                string powerBody;
+
+                if (!_supportsHue && !_supportsSaturation)
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
+                else
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"on_off\\\":1}}}\"}}";
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), powerBody);
 
                 if (response == null) return;
                 if (response.Status != 200) return;
@@ -241,7 +261,16 @@ namespace TpLinkKasa
                 if (KasaSystem.Token == null) return;
                 if (KasaSystem.Token.Length <= 0) return;
 
-                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}");
+                string powerBody;
+
+                if (!_supportsHue && !_supportsSaturation)
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}";
+                else
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                                  "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"on_off\\\":0}}}\"}}";
+
+                var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), powerBody);
 
                 if (response == null) return;
                 if (response.Status != 200) return;
