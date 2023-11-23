@@ -194,11 +194,11 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.KasaDevice_OnNewEvent - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.KasaDevice_OnNewEvent - ", ex);
             }
         }
 
@@ -244,11 +244,11 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOn - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.PowerOn - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOn - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.PowerOn - ", ex);
             }
         }
 
@@ -294,11 +294,11 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOff - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.PowerOff - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOff - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.PowerOff - ", ex);
             }
         }
 
@@ -337,11 +337,11 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOnChild - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.PowerOnChild - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOnChild - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.PowerOnChild - ", ex);
             }
         }
 
@@ -380,11 +380,11 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOnChild - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.PowerOnChild - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.PowerOnChild - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.PowerOnChild - ", ex);
             }
         }
 
@@ -440,7 +440,7 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.SetBrightness - ", he);
             }
             catch (InvalidOperationException ie)
             {
@@ -448,7 +448,7 @@ namespace TpLinkKasa
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetBrightness - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.SetBrightness - ", ex);
             }
         }
 
@@ -470,6 +470,7 @@ namespace TpLinkKasa
 
                     var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), hueBody);
 
+                    if (response == null) return;
                     if (response.Content == null) return;
                     if (response.Status != 200) return;
                     if (response.Content.Length <= 0) return;
@@ -497,7 +498,7 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetHue - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.SetHue - ", he);
             }
             catch (InvalidOperationException ie)
             {
@@ -505,7 +506,7 @@ namespace TpLinkKasa
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetHue - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.SetHue - ", ex);
             }
         }
 
@@ -529,6 +530,7 @@ namespace TpLinkKasa
 
                     var response = KasaSystem.Client.Post(string.Format("https://wap.tplinkcloud.com?token={0}", KasaSystem.Token), SimplHttpsClient.ParseHeaders("Content-Type: application/json"), satBody);
 
+                    if (response == null) return;
                     if (response.Content == null) return;
                     if (response.Status != 200) return;
                     if (response.Content.Length <= 0) return;
@@ -556,7 +558,7 @@ namespace TpLinkKasa
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetSaturation - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.SetSaturation - ", he);
             }
             catch (InvalidOperationException ie)
             {
@@ -564,7 +566,7 @@ namespace TpLinkKasa
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.SetSaturation - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.SetSaturation - ", ex);
             }
         }
     }
