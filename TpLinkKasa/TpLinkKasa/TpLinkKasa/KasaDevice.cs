@@ -190,15 +190,15 @@ namespace TpLinkKasa
             }
             catch (SocketException se)
             {
-                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_OnNewEvent - ", se);
+                ErrorLog.Exception("SocketException occured in KasaDevice.KasaDevice_GetDevice - ", se);
             }
             catch (HttpsException he)
             {
-                ErrorLog.Exception("HttpsException occured in KasaDevice.KasaDevice_OnNewEvent - ", he);
+                ErrorLog.Exception("HttpsException occured in KasaDevice.KasaDevice_GetDevice - ", he);
             }
             catch (Exception ex)
             {
-                ErrorLog.Exception("Exception occured in KasaDevice.KasaDevice_OnNewEvent - ", ex);
+                ErrorLog.Exception("Exception occured in KasaDevice.KasaDevice_GetDevice - ", ex);
             }
         }
 
