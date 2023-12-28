@@ -18,6 +18,7 @@ namespace TpLinkKasa
         internal static string Token;
         internal static List<KasaDeviceInfo> Devices = new List<KasaDeviceInfo>();
         internal static Dictionary<string, KasaDeviceSubscriptionEvent> SubscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
+        private static int _tokenGetCnt;
 
         internal static readonly HttpsClientPool Client = SingletonHttpsClientPool.Instance.ClientPool;
   
@@ -46,13 +47,32 @@ namespace TpLinkKasa
             {
                 if (Username.Length > 0 && Password.Length > 0)
                 {
-                    var response = Client.Post("https://wap.tplinkcloud.com", SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}");
+                    var tCnt = Interlocked.Increment(ref _tokenGetCnt);
+                    if (tCnt >= int.MaxValue)
+                    {
+                        Interlocked.Exchange(ref _tokenGetCnt, 0);
+                    }
+
+                    var response = Client.Post("https://wap.tplinkcloud.com", SimplHttpsClient.ParseHeaders("Content-Type: application/json"), "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron" + tCnt + "\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}");
+
+                    
 
                     if (response == null) return;
                     if (response.Status != 200) return;
                     if (response.Content.Length <= 0) return;
                     var body = JObject.Parse(response.Content);
 
+                    if (body["error_code"] != null)
+                    {
+                        if (body["msg"] != null)
+                        {
+                            if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                            {
+                                GetToken();
+                                return;
+                            }
+                        }
+                    }
                     if (body["result"] == null) return;
                     if (body["result"]["token"] != null)
                     {

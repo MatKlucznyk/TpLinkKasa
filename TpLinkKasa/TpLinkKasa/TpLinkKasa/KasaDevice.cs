@@ -85,6 +85,17 @@ namespace TpLinkKasa
 
                 var body = JObject.Parse(response.Content);
 
+                if (body["error_code"] != null)
+                {
+                    if (body["msg"] != null)
+                    {
+                        if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                        {
+                            KasaSystem.GetSystem();
+                            return;
+                        }
+                    }
+                }
                 if (body["result"] == null) return;
                 if (body["result"]["responseData"] == null) return;
 
@@ -229,7 +240,16 @@ namespace TpLinkKasa
                 var body = JObject.Parse(response.Content);
 
                 if (body["error_code"] == null) return;
-                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                {
+                    if (body["msg"] == null) return;
+                    if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                    {
+                        KasaSystem.GetSystem();
+                    }
+
+                    return;
+                }
 
                 RelayState = 1;
 
@@ -279,7 +299,16 @@ namespace TpLinkKasa
                 var body = JObject.Parse(response.Content);
 
                 if (body["error_code"] == null) return;
-                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                {
+                    if (body["msg"] == null) return;
+                    if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                    {
+                        KasaSystem.GetSystem();
+                    }
+
+                    return;
+                }
 
                 RelayState = 0;
 
@@ -322,7 +351,16 @@ namespace TpLinkKasa
                 var body = JObject.Parse(response.Content);
 
                 if (body["error_code"] == null) return;
-                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                {
+                    if (body["msg"] == null) return;
+                    if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                    {
+                        KasaSystem.GetSystem();
+                    }
+
+                    return;
+                }
 
                 _children[index - 1].State = 1;
 
@@ -365,7 +403,16 @@ namespace TpLinkKasa
                 var body = JObject.Parse(response.Content);
 
                 if (body["error_code"] == null) return;
-                if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                {
+                    if (body["msg"] == null) return;
+                    if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                    {
+                        KasaSystem.GetSystem();
+                    }
+
+                    return;
+                }
 
                 _children[index - 1].State = 0;
 
@@ -420,7 +467,16 @@ namespace TpLinkKasa
                     var body = JObject.Parse(response.Content);
 
                     if (body["error_code"] == null) return;
-                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                    {
+                        if (body["msg"] == null) return;
+                        if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                        {
+                            KasaSystem.GetSystem();
+                        }
+
+                        return;
+                    }
 
                     Brightness = bri;
 
@@ -478,7 +534,16 @@ namespace TpLinkKasa
                     var body = JObject.Parse(response.Content);
 
                     if (body["error_code"] == null) return;
-                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                    {
+                        if (body["msg"] == null) return;
+                        if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                        {
+                            KasaSystem.GetSystem();
+                        }
+
+                        return;
+                    }
 
                     Hue = hue;
 
@@ -538,7 +603,16 @@ namespace TpLinkKasa
                     var body = JObject.Parse(response.Content);
 
                     if (body["error_code"] == null) return;
-                    if (Convert.ToInt16(body["error_code"].ToString()) != 0) return;
+                    if (Convert.ToInt16(body["error_code"].ToString()) != 0)
+                    {
+                        if (body["msg"] == null) return;
+                        if (body["msg"].ToObject<string>() == "API rate limit exceeded")
+                        {
+                            KasaSystem.GetSystem();
+                        }
+
+                        return;
+                    }
 
                     Saturation = sat;
 
