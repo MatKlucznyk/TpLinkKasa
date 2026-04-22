@@ -37,7 +37,7 @@
       <HintPath>..\packages\Avg.Communications.2.4.0\lib\net472\Avg.Communications.dll</HintPath>
     </Reference>
     <Reference Include="Avg.ModuleFramework, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Avg.ModuleFramework.2.0.4\lib\net472\Avg.ModuleFramework.dll</HintPath>
+      <HintPath>..\packages\Avg.ModuleFramework.2.1.0\lib\net472\Avg.ModuleFramework.dll</HintPath>
     </Reference>
     <Reference Include="SimplSharpAutoUpdateInterface, Version=1.0.0.0, Culture=neutral, PublicKeyToken=1099c178b3b54c3b, processorArchitecture=MSIL">
       <HintPath>..\packages\Crestron.SimplSharp.SDK.Library.2.21.237\lib\net47\SimplSharpAutoUpdateInterface.dll</HintPath>
@@ -107,5 +107,7 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Crestron.SimplSharp.SDK.Library.2.21.237\build\Crestron.SimplSharp.SDK.Library.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Crestron.SimplSharp.SDK.Library.2.21.237\build\Crestron.SimplSharp.SDK.Library.targets'))" />
+    <Error Condition="!Exists('..\packages\Crestron.SSharp.1.0.0\build\Crestron.SSharp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Crestron.SSharp.1.0.0\build\Crestron.SSharp.targets'))" />
   </Target>
+  <Import Project="..\packages\Crestron.SSharp.1.0.0\build\Crestron.SSharp.targets" Condition="Exists('..\packages\Crestron.SSharp.1.0.0\build\Crestron.SSharp.targets')" />
 </Project>
