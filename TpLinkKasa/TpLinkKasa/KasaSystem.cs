@@ -18,18 +18,21 @@ namespace TpLinkKasa
     /// the cloud API. It manages user credentials, handles authentication, and retrieves device information. All
     /// members are static and thread-safe where required. Before calling device-related methods, set the Username and
     /// Password properties with valid TP-Link Kasa cloud credentials.</remarks>
-    public static class KasaSystem
+    public class KasaSystem
     {
         internal const string BaseUrl = "https://wap.tplinkcloud.com";
+        private const string AppType = "crestron-tpLink";
 
+        private static string _terminalUuid = "3df98660-6155-4a7d-bc70-8622d41c767e";
         private static readonly object _syncLock = new object();
-        internal static readonly HttpsClientPool Client = new HttpsClientPool(50);
+        internal static readonly HttpsClientPool Client = new HttpsClientPool();
         internal static readonly Logger KasaLogger = new Logger("TpLinkKasa");
+        private static readonly Dictionary<string, KasaDeviceSubscriptionEvent> _subscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
 
         internal static string Token { get { lock (_syncLock) { return _token; } } }
         private  static List<KasaDeviceInfo> _devices = new List<KasaDeviceInfo>();
-        private static Dictionary<string, KasaDeviceSubscriptionEvent> _subscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
-        private static int _tokenGetCnt;
+        
+        private static int _tokenGetCnt = new Random().Next();
         private static string _token;
         
         /// <summary>
@@ -43,6 +46,11 @@ namespace TpLinkKasa
         /// <remarks>The password value can only be set; it cannot be retrieved through this property.
         /// This design helps prevent accidental exposure of sensitive information in application code.</remarks>
         public static string Password { private get; set; }
+
+        static KasaSystem()
+        {
+            KasaLogger.DebugLevel = DebugLevels.Disabled;
+        }
 
         internal static bool TryRegisterDevice(string alias, out KasaDeviceSubscriptionEvent subscriptionEvent)
         {
@@ -71,6 +79,8 @@ namespace TpLinkKasa
             {
                 if (Username.Length > 0 && Password.Length > 0)
                 {
+                    KasaLogger.PrintLine("Getting authentication token...");
+
                     var tCnt = Interlocked.Increment(ref _tokenGetCnt);
                     if (tCnt >= int.MaxValue)
                     {
@@ -82,9 +92,13 @@ namespace TpLinkKasa
                         { "Content-Type", "application/json" }
                     };
 
-                    var content = "{\"method\":\"login\",\"params\":{\"appType\":\"Crestron" + tCnt + "\",\"cloudUserName\":\"" + Username + "\",\"cloudPassword\":\"" + Password + "\",\"terminalUUID\":\"3df98660-6155-4a7d-bc70-8622d41c767e\"}}";
+                    var content = $"{{\"method\":\"login\",\"params\":{{\"appType\":\"{AppType}{tCnt}\",\"cloudUserName\":\"{Username}\",\"cloudPassword\":\"{Password}\",\"terminalUUID\":\"{_terminalUuid}\"}}}}";
+
+                    KasaLogger.PrintLine($"Token Request App Type: {AppType}{tCnt}, Terminal UUID: {_terminalUuid}");
 
                     var response = Client.SendRequest(BaseUrl, Crestron.SimplSharp.Net.AuthMethod.NONE, RequestType.Post, headers, string.Empty, string.Empty, content, KasaLogger);
+
+                    KasaLogger.PrintLine($"Token Response Content Length: {(response != null ? response.Content.Length.ToString() : "null response")}");
 
 
                     if (response == null) return;
@@ -101,12 +115,19 @@ namespace TpLinkKasa
                                 GetToken();
                                 return;
                             }
+                            else
+                            {
+                                KasaLogger.PrintLine($"Error getting token: {body["msg"].ToObject<string>()}");
+                                return;
+                            }
                         }
                     }
                     if (body["result"] == null) return;
                     if (body["result"]["token"] != null)
                     {
-                        lock(_syncLock) _token = body["result"]["token"].ToString().Replace("\"", string.Empty);
+                        var tokenValue = body["result"]["token"].ToString().Replace("\"", string.Empty);
+                        KasaLogger.PrintLine($"Token obtained: {(tokenValue.Length > 0 ? "Token acquired" : "Token empty")}");
+                        lock (_syncLock) _token = tokenValue;
                     }
                 }
                 else
@@ -140,6 +161,8 @@ namespace TpLinkKasa
         {
             try
             {
+                KasaLogger.PrintLine("Getting system information...");
+
                 if (Username.Length <= 0 || Password.Length <= 0)
                     throw new ArgumentException("Username and Password cannot be empty");
                 GetToken();
