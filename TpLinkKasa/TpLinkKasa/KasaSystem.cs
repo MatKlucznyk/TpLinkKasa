@@ -1,38 +1,59 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using Avg.Communications.Net;
+using Avg.ModuleFramework.Logging;
 using Crestron.SimplSharp;                          				// For Basic SIMPL# Classes
 using Crestron.SimplSharp.Net.Https;
-using Avg.Communications.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Avg.ModuleFramework.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TpLinkKasa
 {
+    /// <summary>
+    /// Provides static methods and properties for managing authentication and device discovery with the TP-Link Kasa
+    /// cloud system.
+    /// </summary>
+    /// <remarks>This class is intended for use in applications that interact with TP-Link Kasa devices via
+    /// the cloud API. It manages user credentials, handles authentication, and retrieves device information. All
+    /// members are static and thread-safe where required. Before calling device-related methods, set the Username and
+    /// Password properties with valid TP-Link Kasa cloud credentials.</remarks>
     public static class KasaSystem
     {
-        internal static string BaseUrl = "https://wap.tplinkcloud.com";
+        internal const string BaseUrl = "https://wap.tplinkcloud.com";
 
-        public static string Username { get; set; }
-        public static string Password { get; set; }
-
-        internal static string Token;
-        internal static List<KasaDeviceInfo> Devices = new List<KasaDeviceInfo>();
-        internal static Dictionary<string, KasaDeviceSubscriptionEvent> SubscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
-        private static int _tokenGetCnt;
-
+        private static readonly object _syncLock = new object();
         internal static readonly HttpsClientPool Client = new HttpsClientPool(50);
-        internal static Logger KasaLogger = new Logger("TpLinkKasa");
+        internal static readonly Logger KasaLogger = new Logger("TpLinkKasa");
 
-        internal static bool RegisterDevice(string alias)
+        internal static string Token { get { lock (_syncLock) { return _token; } } }
+        private  static List<KasaDeviceInfo> _devices = new List<KasaDeviceInfo>();
+        private static Dictionary<string, KasaDeviceSubscriptionEvent> _subscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
+        private static int _tokenGetCnt;
+        private static string _token;
+        
+        /// <summary>
+        /// Sets the username associated with the current context.
+        /// </summary>
+        public static string Username { private get; set; }
+
+        /// <summary>
+        /// Sets the password used for authentication or encryption purposes.
+        /// </summary>
+        /// <remarks>The password value can only be set; it cannot be retrieved through this property.
+        /// This design helps prevent accidental exposure of sensitive information in application code.</remarks>
+        public static string Password { private get; set; }
+
+        internal static bool TryRegisterDevice(string alias, out KasaDeviceSubscriptionEvent subscriptionEvent)
         {
+            subscriptionEvent = null;
             try
             {
-                lock (SubscribedDevices)
+                lock (_syncLock)
                 {
-                    if (SubscribedDevices.ContainsKey(alias)) return false;
-                    SubscribedDevices.Add(alias, new KasaDeviceSubscriptionEvent());
+                    if (_subscribedDevices.ContainsKey(alias)) return false;
+                    _subscribedDevices.Add(alias, new KasaDeviceSubscriptionEvent());
+                    subscriptionEvent = _subscribedDevices[alias];
 
                     return true;
                 }
@@ -85,7 +106,7 @@ namespace TpLinkKasa
                     if (body["result"] == null) return;
                     if (body["result"]["token"] != null)
                     {
-                        Token = body["result"]["token"].ToString().Replace("\"", string.Empty);
+                        lock(_syncLock) _token = body["result"]["token"].ToString().Replace("\"", string.Empty);
                     }
                 }
                 else
@@ -108,6 +129,13 @@ namespace TpLinkKasa
             }
         }
 
+        /// <summary>
+        /// Retrieves the current list of devices from the system and updates the internal device collection.
+        /// </summary>
+        /// <remarks>This method attempts to authenticate and query the system for the latest device list.
+        /// If authentication fails or the request is unsuccessful, the internal device collection remains unchanged.
+        /// The method logs exceptions and returns 0 in case of errors.</remarks>
+        /// <returns>A value of 1 if one or more devices are found; otherwise, 0.</returns>
         public static ushort GetSystem()
         {
             try
@@ -116,37 +144,40 @@ namespace TpLinkKasa
                     throw new ArgumentException("Username and Password cannot be empty");
                 GetToken();
 
-                if (Token == null) return (ushort) (Devices.Count > 0 ? 1 : 0);
-                if (Token.Length <= 0) return (ushort) (Devices.Count > 0 ? 1 : 0);
+                var token = Token;
+
+                if (token == null) return (ushort) (_devices.Count > 0 ? 1 : 0);
+                if (token.Length <= 0) return (ushort) (_devices.Count > 0 ? 1 : 0);
 
                 var headers = new Dictionary<string, string>()
                 {
                     { "Content-Type", "application/json" }
                 };
 
-                var response = Client.SendRequest($"{BaseUrl}?token={Token}", Crestron.SimplSharp.Net.AuthMethod.NONE, RequestType.Post, headers, string.Empty, string.Empty, "{\"method\":\"getDeviceList\"}", KasaLogger);
+                var response = Client.SendRequest($"{BaseUrl}?token={token}", Crestron.SimplSharp.Net.AuthMethod.NONE, RequestType.Post, headers, string.Empty, string.Empty, "{\"method\":\"getDeviceList\"}", KasaLogger);
 
-                if (response == null) return (ushort) (Devices.Count > 0 ? 1 : 0);
-                if (response.Status != 200) return (ushort) (Devices.Count > 0 ? 1 : 0);
-                if (response.Content.Length <= 0) return (ushort) (Devices.Count > 0 ? 1 : 0);
+                if (response == null) return (ushort) (_devices.Count > 0 ? 1 : 0);
+                if (response.Status != 200) return (ushort) (_devices.Count > 0 ? 1 : 0);
+                if (response.Content.Length <= 0) return (ushort) (_devices.Count > 0 ? 1 : 0);
                 var body = JObject.Parse(response.Content);
 
-                if (body["result"] == null) return (ushort) (Devices.Count > 0 ? 1 : 0);
-                if (body["result"]["deviceList"] == null) return (ushort) (Devices.Count > 0 ? 1 : 0);
-                Devices =
-                    JsonConvert.DeserializeObject<List<KasaDeviceInfo>>(
-                        body["result"]["deviceList"].ToString());
+                if (body["result"] == null) return (ushort) (_devices.Count > 0 ? 1 : 0);
+                if (body["result"]["deviceList"] == null) return (ushort) (_devices.Count > 0 ? 1 : 0);
+                List<KasaDeviceInfo> devices;
+                devices = JsonConvert.DeserializeObject<List<KasaDeviceInfo>>(
+                            body["result"]["deviceList"].ToString());
+                lock (_syncLock) _devices = devices;
 
                 foreach (
                     var device in
-                        Devices.Where(
-                            device => SubscribedDevices.ContainsKey(device.Alias)))
+                        devices.Where(
+                            device => _subscribedDevices.ContainsKey(device.Alias)))
                 {
-                    SubscribedDevices[device.Alias].Fire(
+                    _subscribedDevices[device.Alias].Fire(
                         new KasaDeviceEventArgs(eKasaDeviceEventId.GetNow, 1));
                 }
 
-                return (ushort) (Devices.Count > 0 ? 1 : 0);
+                return (ushort) (devices.Count > 0 ? 1 : 0);
             }
             catch (SocketException se)
             {
