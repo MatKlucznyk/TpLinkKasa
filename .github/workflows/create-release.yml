@@ -1,0 +1,102 @@
+name: Create Release with Module Archive
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    env:
+      REPO_NAME: ${{ github.event.repository.name }}
+      TAG_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Re-normalize line endings for .usp files
+        run: |
+          git add --renormalize Module/*.usp || true
+          git diff --cached --name-only
+
+      - name: Check for Module folder
+        id: check-module
+        run: |
+          if [ -d "Module" ]; then
+            echo "Found Module folder"
+            # Check if Module folder has content other than .gitkeep
+            file_count=$(find Module -type f ! -name ".gitkeep" | wc -l)
+            if [ "$file_count" -gt 0 ]; then
+              echo "module-has-content=true" >> $GITHUB_OUTPUT
+              echo "Module folder contains $file_count file(s) (excluding .gitkeep)"
+            else
+              echo "module-has-content=false" >> $GITHUB_OUTPUT
+              echo "Module folder only contains .gitkeep file - skipping release"
+            fi
+          else
+            echo "module-has-content=false" >> $GITHUB_OUTPUT
+            echo "No Module folder found"
+          fi
+
+      - name: Create zip archive of Module folder
+        if: steps.check-module.outputs.module-has-content == 'true'
+        run: |
+          cd Module
+          zip -r "../${{ env.REPO_NAME }}.${{ env.TAG_NAME }}.zip" . -x ".gitkeep"
+          cd ..
+          echo "Created archive: ${{ env.REPO_NAME }}.${{ env.TAG_NAME }}.zip"
+
+      - name: Create GitHub Release
+        if: steps.check-module.outputs.module-has-content == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ env.TAG_NAME }}
+          tag_name: ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+          files: ${{ env.REPO_NAME }}.${{ env.TAG_NAME }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log completion
+        if: steps.check-module.outputs.module-has-content == 'true'
+        run: |
+          echo "✅ Release ${{ env.TAG_NAME }} created successfully"
+          echo "📦 Archive: ${{ env.REPO_NAME }}.${{ env.TAG_NAME }}.zip"
+
+      - name: Skip release creation
+        if: steps.check-module.outputs.module-has-content == 'false'
+        run: |
+          echo "⚠️ Skipping release creation - Module folder is empty or only contains .gitkeep"
+          
+          # Check for Crestron module files (.umc or .usp)
+          crestron_files=$(find . -type f \( -name "*.umc" -o -name "*.usp" \) | head -5)
+          if [ -n "$crestron_files" ]; then
+            echo "❌ ERROR: Crestron module files found but Module folder is empty"
+            echo "Found files:"
+            echo "$crestron_files"
+            exit 1
+          fi
+          
+          # Check for C# library files (.clz) without .nuspec
+          clz_files=$(find . -type f -name "*.clz" | head -5)
+          if [ -n "$clz_files" ]; then
+            nuspec_files=$(find . -maxdepth 1 -type f -name "*.nuspec")
+            if [ -z "$nuspec_files" ]; then
+              echo "❌ ERROR: C# library should be its own repo, and added as a submodule"
+              echo "Found .clz files:"
+              echo "$clz_files"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ No conflicting files found - skipping release is appropriate"
