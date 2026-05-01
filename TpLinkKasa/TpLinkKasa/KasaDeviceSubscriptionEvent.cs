@@ -24,7 +24,7 @@ namespace TpLinkKasa
 
         internal void Fire(KasaDeviceEventArgs e)
         {
-            onNewEvent(null, e);
+            onNewEvent?.Invoke(null, e);
         }
     }
 }

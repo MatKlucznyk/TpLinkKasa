@@ -3,6 +3,7 @@ using Crestron.SimplSharp.Net.Https;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace TpLinkKasa
 {
@@ -20,7 +21,6 @@ namespace TpLinkKasa
         private readonly object _syncLock = new object();
         private bool _isInitialized;
         private string _alias;
-        private KasaDeviceInfo _device;
         private bool _supportsBrightness;
         private bool _supportsRelayState;
         private bool _supportsHue;
@@ -170,10 +170,11 @@ namespace TpLinkKasa
 
         void KasaDevice_OnNewEvent(object sender, KasaDeviceEventArgs e)
         {
+            KasaSystem.KasaLogger.PrintLine($"Received event for device with alias {_alias}: {e.Id} with value {e.Value}");
             switch (e.Id)
             {
                 case eKasaDeviceEventId.GetNow:
-                    GetDevice();
+                    Task.Run(() => GetDevice());
                     break;
                 case eKasaDeviceEventId.RelayState:
                     RelayState = Convert.ToUInt16(e.Value);
@@ -236,7 +237,15 @@ namespace TpLinkKasa
                 if (!EnsureInitialized()) return;
                 if (!EnsureSubscribed()) return;
 
-                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"get_sysinfo\\\":{}}}\"}}";
+                if(!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
+
+                KasaSystem.KasaLogger.PrintLine($"Getting device data for device with alias {_alias}");
+
+                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId + "\",\"requestData\":\"{\\\"system\\\":{\\\"get_sysinfo\\\":{}}}\"}}";
 
                 var response = SendRequest(content);
 
@@ -259,10 +268,14 @@ namespace TpLinkKasa
 
                 if (switchData["system"] == null || switchData["system"]["get_sysinfo"] == null) return;
 
+                KasaSystem.KasaLogger.PrintLine($"Received sysinfo data for device with alias {_alias}");
+
                 if (switchData["system"]["get_sysinfo"]["relay_state"] != null)
                 {
                     _supportsRelayState = true;
                     RelayState = switchData["system"]["get_sysinfo"]["relay_state"].ToObject<ushort>();
+
+                    KasaSystem.KasaLogger.PrintLine($"Updated relay state for device with alias {_alias}: {RelayState}");
 
                     OnNewRelayState?.Invoke(RelayState);
                 }
@@ -279,6 +292,8 @@ namespace TpLinkKasa
 
                     Brightness =
                         (ushort) CrestronEnvironment.ScaleWithLimits(bri, 100, 0, ushort.MaxValue, ushort.MinValue);
+
+                    KasaSystem.KasaLogger.PrintLine($"Updated brightness for device with alias {_alias}: {Brightness}");
 
                     OnNewBrightness?.Invoke(Brightness);
                 }
@@ -305,6 +320,8 @@ namespace TpLinkKasa
                     Saturation =
                         (ushort) CrestronEnvironment.ScaleWithLimits(sat, 100, 0, ushort.MaxValue, ushort.MinValue);
 
+                    KasaSystem.KasaLogger.PrintLine($"Updated light state for device with alias {_alias}: Relay State: {RelayState}, Brightness: {Brightness}, Hue: {Hue}, Saturation: {Saturation}");
+
                     OnNewRelayState?.Invoke(RelayState);
 
                     OnNewBrightness?.Invoke(Brightness);
@@ -328,6 +345,8 @@ namespace TpLinkKasa
                 if (switchData["system"]["get_sysinfo"]["children"] != null)
                 {
                     _children = switchData["system"]["get_sysinfo"]["children"].ToObject<List<KasaDeviceChild>>();
+
+                    KasaSystem.KasaLogger.PrintLine($"Updated children data for device with alias {_alias}. Total children: {TotalChildren}");
 
                     OnNewChildrenData?.Invoke(new KasaDeviceChildren(_children.ToArray()));
                 }
@@ -361,13 +380,19 @@ namespace TpLinkKasa
                 if (!EnsureSubscribed()) return;
                 if (!_supportsRelayState) return;
 
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
+
                 string powerBody;
 
                 if (!_supportsHue && !_supportsSaturation)
-                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                                 "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
                 else
-                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                                   "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"on_off\\\":1}}}\"}}";
 
                 var response = SendRequest(powerBody);
@@ -420,13 +445,19 @@ namespace TpLinkKasa
                 if (!EnsureSubscribed()) return;
                 if (!_supportsRelayState) return;
 
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
+
                 string powerBody;
 
                 if (!_supportsHue && !_supportsSaturation)
-                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                                 "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}";
                 else
-                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    powerBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                                   "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"on_off\\\":0}}}\"}}";
 
                 var response = SendRequest(powerBody);
@@ -482,6 +513,12 @@ namespace TpLinkKasa
                 if (!_hasChildren) return;
                 if (TotalChildren < index) return;
 
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
+
                 KasaDeviceChild child;
 
                 lock(_syncLock)
@@ -489,7 +526,7 @@ namespace TpLinkKasa
                     child = _children[index - 1];
                 }
                 if (child == null) return;
-                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + child.ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
+                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId + "\",\"child\":\"" + child.ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":1}}}\"}}";
 
                 var response = SendRequest(content);
 
@@ -557,9 +594,15 @@ namespace TpLinkKasa
                     if (_children[index - 1] == null) return;
                     child = _children[index - 1];
                 }
-                
 
-                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId + "\",\"child\":\"" + child.ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}";
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
+
+
+                var content = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId + "\",\"child\":\"" + child.ID + "\",\"requestData\":\"{\\\"system\\\":{\\\"set_relay_state\\\":{\\\"state\\\":0}}}\"}}";
 
                 var response = SendRequest(content);
 
@@ -618,18 +661,24 @@ namespace TpLinkKasa
             {
                 if (!EnsureInitialized()) return;
                 if (!EnsureSubscribed()) return;
-                if (_supportsBrightness) throw new InvalidOperationException("This device does not support brightness"); 
+                if (_supportsBrightness) throw new InvalidOperationException("This device does not support brightness");
+
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
 
                 var sBri = CrestronEnvironment.ScaleWithLimits(bri, ushort.MaxValue, ushort.MinValue, 100, 0);
 
                 string briBody;
 
                 if (!_supportsHue && !_supportsSaturation)
-                    briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                               "\",\"requestData\":\"{\\\"smartlife.iot.dimmer\\\":{\\\"set_brightness\\\":{\\\"brightness\\\":" +
                               sBri.ToString() + "}}}\"}}";
                 else
-                    briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                    briBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                               "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"brightness\\\":" +
                               sBri.ToString() + "}}}\"}}";
 
@@ -688,11 +737,17 @@ namespace TpLinkKasa
             {
                 if (!EnsureInitialized()) return;
                 if (!EnsureSubscribed()) return;
-                if (!_supportsHue) throw new InvalidOperationException("This device does not support hue"); 
+                if (!_supportsHue) throw new InvalidOperationException("This device does not support hue");
+
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
 
                 var sHue = CrestronEnvironment.ScaleWithLimits(hue, ushort.MaxValue, ushort.MinValue, 360, 0);
 
-                var hueBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                var hueBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                               "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"hue\\\":" +
                               sHue.ToString() + "}}}\"}}";
 
@@ -750,11 +805,17 @@ namespace TpLinkKasa
             {
                 if (!EnsureInitialized()) return;
                 if (!EnsureSubscribed()) return;
-                if (_supportsSaturation) throw new InvalidOperationException("This device does not support saturation");             
+                if (_supportsSaturation) throw new InvalidOperationException("This device does not support saturation");
+
+                if (!KasaSystem.TryGetDeviceInfo(_alias, out var device))
+                {
+                    KasaSystem.KasaLogger.LogNotice($"Device information for device with alias {_alias} could not be retrieved. Ensure the device is properly registered and try again.");
+                    return;
+                }
 
                 var sSat = CrestronEnvironment.ScaleWithLimits(sat, ushort.MaxValue, ushort.MinValue, 100, 0);
 
-                var satBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + _device.DeviceId +
+                var satBody = "{\"method\":\"passthrough\",\"params\":{\"deviceId\":\"" + device.DeviceId +
                               "\",\"requestData\":\"{\\\"smartlife.iot.smartbulb.lightingservice\\\":{\\\"transition_light_state\\\":{\\\"saturation\\\":" +
                               sSat.ToString() + "}}}\"}}";
 

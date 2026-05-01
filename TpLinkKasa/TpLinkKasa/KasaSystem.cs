@@ -21,12 +21,15 @@ namespace TpLinkKasa
     public class KasaSystem
     {
         internal const string BaseUrl = "https://wap.tplinkcloud.com";
-        private const string AppType = "crestron-tpLink";
+        private const string AppType = "x";
 
-        private static string _terminalUuid = "3df98660-6155-4a7d-bc70-8622d41c767e";
+        private static string _terminalUuid = "3df98660-6155-4a7d-bc70-8622d41c767w";
         private static readonly object _syncLock = new object();
         internal static readonly HttpsClientPool Client = new HttpsClientPool();
-        internal static readonly Logger KasaLogger = new Logger("TpLinkKasa");
+        internal static readonly Logger KasaLogger = new Logger("TpLinkKasa")
+        {
+            DebugLevel = DebugLevels.AllEnabled
+        };
         private static readonly Dictionary<string, KasaDeviceSubscriptionEvent> _subscribedDevices = new Dictionary<string, KasaDeviceSubscriptionEvent>();
 
         internal static string Token { get { lock (_syncLock) { return _token; } } }
@@ -47,11 +50,6 @@ namespace TpLinkKasa
         /// This design helps prevent accidental exposure of sensitive information in application code.</remarks>
         public static string Password { private get; set; }
 
-        static KasaSystem()
-        {
-            KasaLogger.DebugLevel = DebugLevels.Disabled;
-        }
-
         internal static bool TryRegisterDevice(string alias, out KasaDeviceSubscriptionEvent subscriptionEvent)
         {
             subscriptionEvent = null;
@@ -64,6 +62,26 @@ namespace TpLinkKasa
                     subscriptionEvent = _subscribedDevices[alias];
 
                     return true;
+                }
+            }
+            catch (Exception e)
+            {
+                KasaLogger.LogException(e);
+                return false;
+            }
+        }
+
+        internal static bool TryGetDeviceInfo(string alias, out KasaDeviceInfo deviceInfo)
+        {
+            deviceInfo = null;
+            try
+            {
+                lock (_syncLock)
+                {
+                    if (_devices == null) return false;
+                    if (_devices.Count <= 0) return false;
+                    deviceInfo = _devices.FirstOrDefault(d => d.Alias == alias);
+                    return deviceInfo != null;
                 }
             }
             catch (Exception e)
@@ -92,9 +110,9 @@ namespace TpLinkKasa
                         { "Content-Type", "application/json" }
                     };
 
-                    var content = $"{{\"method\":\"login\",\"params\":{{\"appType\":\"{AppType}{tCnt}\",\"cloudUserName\":\"{Username}\",\"cloudPassword\":\"{Password}\",\"terminalUUID\":\"{_terminalUuid}\"}}}}";
+                    var content = $"{{\"method\":\"login\",\"params\":{{\"appType\":\"{AppType}\",\"cloudUserName\":\"{Username}\",\"cloudPassword\":\"{Password}\",\"terminalUUID\":\"{_terminalUuid}\"}}}}";
 
-                    KasaLogger.PrintLine($"Token Request App Type: {AppType}{tCnt}, Terminal UUID: {_terminalUuid}");
+                    KasaLogger.PrintLine($"Token Request App Type: {AppType}, Terminal UUID: {_terminalUuid}");
 
                     var response = Client.SendRequest(BaseUrl, Crestron.SimplSharp.Net.AuthMethod.NONE, RequestType.Post, headers, string.Empty, string.Empty, content, KasaLogger);
 
@@ -196,6 +214,7 @@ namespace TpLinkKasa
                         devices.Where(
                             device => _subscribedDevices.ContainsKey(device.Alias)))
                 {
+                    KasaLogger.PrintLine($"Found device with alias: {device.Alias}, firing event for subscribed device.");
                     _subscribedDevices[device.Alias].Fire(
                         new KasaDeviceEventArgs(eKasaDeviceEventId.GetNow, 1));
                 }
